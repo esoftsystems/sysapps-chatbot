@@ -1,3 +1,24 @@
+# Scripts Directory
+
+This directory contains various utility scripts for the sysapps-chatbot project.
+
+## Branch Visibility Checker
+
+Scripts to check if a GitHub repository is public or private, and verify if specific branches exist and are accessible.
+
+See [CHECK_BRANCH_VISIBILITY.md](CHECK_BRANCH_VISIBILITY.md) for detailed documentation.
+
+**Quick usage:**
+```bash
+# Check if 'development' branch exists (using local git)
+python3 check_branch_local.py development
+
+# Check repository visibility and branch existence (using GitHub API)
+python3 check_branch_visibility.py esoftsystems/sysapps-chatbot development
+```
+
+---
+
 # Data Preparation
 
 # Prepare Data Locally
