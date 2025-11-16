@@ -22,10 +22,16 @@ RUN apk add --no-cache --virtual .build-deps \
 COPY requirements.txt /usr/src/app/  
 RUN pip install --no-cache-dir -r /usr/src/app/requirements.txt \  
     && rm -rf /root/.cache  
-  
+
+# Copy the .env file
+COPY .env /usr/src/app/.env
+
+# Set the DOTENV_PATH environment variable
+ENV DOTENV_PATH=/usr/src/app/.env
+
 COPY . /usr/src/app/  
 COPY --from=frontend /home/node/app/static  /usr/src/app/static/
 WORKDIR /usr/src/app  
-EXPOSE 80  
+EXPOSE 50505  
 
-CMD ["gunicorn"  , "-b", "0.0.0.0:80", "app:app"]
+CMD ["gunicorn"  , "-b", "0.0.0.0:50505", "app:app"]

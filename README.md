@@ -151,6 +151,8 @@ Note: RBAC assignments can take a few minutes before becoming effective.
     |AZURE_OPENAI_SYSTEM_MESSAGE|No|You are an AI assistant that helps people find information.|A brief description of the role and tone the model should use|
     |AZURE_OPENAI_STREAM|No|True|Whether or not to use streaming for the response. Note: Setting this to true prevents the use of prompt flow.|
     |AZURE_OPENAI_EMBEDDING_NAME|Only if using vector search using an Azure OpenAI embedding model||The name of your embedding model deployment if using vector search.
+    |PROJECT_ID|No||Limits retrieval to items whose `PROJECT_FIELD` matches this value across supported data sources. See [Django container setup](docs/django-env-setup.md) if you need to stamp this value during an image build.|
+    |PROJECT_FIELD|No|project_id|Name of the field or metadata key used when applying the project filter.|
     |MS_DEFENDER_ENABLED|Yes|True|Whether or not the Microsoft Defender for Cloud's threat protection for AI workloads plan is enabled on your subscription or not , for more details [Microsoft Defender for Cloud documentation](https://learn.microsoft.com/azure/defender-for-cloud/gain-end-user-context-ai).|
 
     See the [documentation](https://learn.microsoft.com/en-us/azure/cognitive-services/openai/reference#example-response-2) for more information on these parameters.
@@ -159,6 +161,8 @@ Note: RBAC assignments can take a few minutes before becoming effective.
 #### Chat with your data
 
 [More information about Azure OpenAI on your data](https://learn.microsoft.com/en-us/azure/cognitive-services/openai/concepts/use-your-data)
+
+If you need to scope retrievals to a specific project, add `PROJECT_ID` to your `.env`. The app will include this value as a filter for supported index and vector data sources. Use `PROJECT_FIELD` to align the filter with the column or metadata key stored in your data.
 
 #### Chat with your data using Azure Cognitive Search
 

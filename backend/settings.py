@@ -233,6 +233,26 @@ class DatasourcePayloadConstructor(BaseModel, ABC):
     def __init__(self, settings: '_AppSettings', **data):
         super().__init__(**data)
         self._settings = settings
+
+    def _project_filter_value(self):
+        project_id = getattr(self._settings.base_settings, "project_id", None)
+        if not project_id:
+            return None
+        field_name = getattr(self._settings.base_settings, "project_field", "project_id")
+        return self._format_project_filter(field_name, project_id)
+
+    def _format_project_filter(self, field_name: str, project_id: str):
+        return {
+            "equals": {
+                "field": field_name,
+                "value": project_id
+            }
+        }
+
+    def _apply_project_filter(self, parameters: dict):
+        project_filter = self._project_filter_value()
+        if project_filter is not None:
+            parameters["filter"] = project_filter
     
     @abstractmethod
     def construct_payload_configuration(
@@ -281,7 +301,6 @@ class _AzureSearchSettings(BaseSettings, DatasourcePayloadConstructor):
     authentication: Optional[dict] = None
     embedding_dependency: Optional[dict] = None
     fields_mapping: Optional[dict] = None
-    filter: Optional[str] = Field(default=None, exclude=True)
     
     @field_validator('content_columns', 'vector_columns', mode="before")
     @classmethod
@@ -334,6 +353,18 @@ class _AzureSearchSettings(BaseSettings, DatasourcePayloadConstructor):
             return filter_string
         
         return None
+    
+    def _format_project_filter(self, field_name: str, project_id: str):
+        sanitized_project_id = str(project_id).replace("'", "''")
+        return f"{field_name} eq '{sanitized_project_id}'"
+
+    def _combine_filters(self, *filters: Optional[str]) -> Optional[str]:
+        active_filters = [f for f in filters if f]
+        if not active_filters:
+            return None
+        if len(active_filters) == 1:
+            return active_filters[0]
+        return " and ".join([f"({f})" for f in active_filters])
             
     def construct_payload_configuration(
         self,
@@ -341,13 +372,19 @@ class _AzureSearchSettings(BaseSettings, DatasourcePayloadConstructor):
         **kwargs
     ):
         request = kwargs.pop('request', None)
+        user_filter = None
         if request and self.permitted_groups_column:
-            self.filter = self._set_filter_string(request)
+            user_filter = self._set_filter_string(request)
             
         self.embedding_dependency = \
             self._settings.azure_openai.extract_embedding_dependency()
         parameters = self.model_dump(exclude_none=True, by_alias=True)
         parameters.update(self._settings.search.model_dump(exclude_none=True, by_alias=True))
+
+        project_filter = self._project_filter_value()
+        combined_filter = self._combine_filters(user_filter, project_filter)
+        if combined_filter:
+            parameters["filter"] = combined_filter
         
         return {
             "type": self._type,
@@ -421,6 +458,7 @@ class _AzureCosmosDbMongoVcoreSettings(
             self._settings.azure_openai.extract_embedding_dependency()
         parameters = self.model_dump(exclude_none=True, by_alias=True)
         parameters.update(self._settings.search.model_dump(exclude_none=True, by_alias=True))
+        self._apply_project_filter(parameters)
         return {
             "type": self._type,
             "parameters": parameters
@@ -493,6 +531,7 @@ class _ElasticsearchSettings(BaseSettings, DatasourcePayloadConstructor):
             
         parameters = self.model_dump(exclude_none=True, by_alias=True)
         parameters.update(self._settings.search.model_dump(exclude_none=True, by_alias=True))
+        self._apply_project_filter(parameters)
                 
         return {
             "type": self._type,
@@ -563,6 +602,7 @@ class _PineconeSettings(BaseSettings, DatasourcePayloadConstructor):
             self._settings.azure_openai.extract_embedding_dependency()
         parameters = self.model_dump(exclude_none=True, by_alias=True)
         parameters.update(self._settings.search.model_dump(exclude_none=True, by_alias=True))
+        self._apply_project_filter(parameters)
         
         return {
             "type": self._type,
@@ -619,6 +659,7 @@ class _AzureMLIndexSettings(BaseSettings, DatasourcePayloadConstructor):
     ):
         parameters = self.model_dump(exclude_none=True, by_alias=True)
         parameters.update(self._settings.search.model_dump(exclude_none=True, by_alias=True))
+        self._apply_project_filter(parameters)
         
         return {
             "type": self._type,
@@ -743,6 +784,7 @@ class _MongoDbSettings(BaseSettings, DatasourcePayloadConstructor):
             
         parameters = self.model_dump(exclude_none=True, by_alias=True)
         parameters.update(self._settings.search.model_dump(exclude_none=True, by_alias=True))
+        self._apply_project_filter(parameters)
         
         return {
             "type": self._type,
@@ -761,6 +803,8 @@ class _BaseSettings(BaseSettings):
     auth_enabled: bool = True
     sanitize_answer: bool = False
     use_promptflow: bool = False
+    project_id: Optional[str] = Field(default=None, validation_alias="PROJECT_ID")
+    project_field: str = Field(default="project_id", validation_alias="PROJECT_FIELD")
 
 
 class _AppSettings(BaseModel):
