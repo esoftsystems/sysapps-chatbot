@@ -40,21 +40,21 @@ def get_current_repo():
         
         # Parse GitHub URL to get owner/repo
         # Handle both HTTPS and SSH URLs
-        if 'github.com' in remote_url:
+        # Only accept URLs that properly start with GitHub patterns
+        if remote_url.startswith('https://github.com/') or remote_url.startswith('http://github.com/'):
+            # HTTPS: https://github.com/owner/repo
             # Remove .git suffix if present
             remote_url = remote_url.rstrip('.git')
-            
-            # Extract owner/repo from URL
-            if remote_url.startswith('https://'):
-                # HTTPS: https://github.com/owner/repo
-                parts = remote_url.split('github.com/')
-                if len(parts) == 2:
-                    return parts[1]
-            elif remote_url.startswith('git@'):
-                # SSH: git@github.com:owner/repo
-                parts = remote_url.split('github.com:')
-                if len(parts) == 2:
-                    return parts[1]
+            parts = remote_url.split('github.com/')
+            if len(parts) == 2:
+                return parts[1]
+        elif remote_url.startswith('git@github.com:'):
+            # SSH: git@github.com:owner/repo
+            # Remove .git suffix if present
+            remote_url = remote_url.rstrip('.git')
+            parts = remote_url.split('github.com:')
+            if len(parts) == 2:
+                return parts[1]
         
         return None
     except subprocess.CalledProcessError:
